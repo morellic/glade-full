@@ -1,0 +1,16 @@
+@num
+
+sign ::= '+' | '-' | e
+
+numseq ::= num | numseq numall
+numallseq ::= numall | numallseq numall
+
+pre ::= '0' | numseq
+
+post ::= e | '.' numallseq
+
+exp ::= 'e' | 'E'
+expsign ::= '+' | '-' | e
+expall ::= exp expsign numallseq
+
+num ::= sign pre post expall

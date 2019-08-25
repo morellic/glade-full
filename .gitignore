@@ -1,0 +1,15 @@
+*.class
+*~
+*.metadata
+*.recommenders
+*.classpath
+*.project
+*.settings
+*.DS_Store
+*lex.yy.c
+/bin/
+glade.jar
+log.txt
+prog-query
+prog-gcov
+seed

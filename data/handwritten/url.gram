@@ -1,0 +1,16 @@
+@url
+
+http ::= 'h' 't' 't' 'p' | 'h' 't' 't' 'p' 's'
+httpsep ::= ':' '/' '/' | ':' '/' '/' 'w' 'w' 'w' '.'
+
+sitechar ::= alphanum | '-' | '@' ':' '%' '.' '_' '+' '~' '#' '='
+site ::= e | site sitechar
+
+domainchar ::= lower
+domain ::= e | domain domainchar
+
+tailchar ::= alphanum | '-' | '@' | ':' | '%' | '_' | '+' | '.' | '~' | '#' | '?' | '&' | '/' | '='
+tailseq ::= e | tailseq tailchar
+tail ::= e | '/' tailseq
+
+url ::= http httpsep site '.' domain tail
