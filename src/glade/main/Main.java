@@ -348,7 +348,7 @@ public class Main {
 		System.out.println("  <grammar> = url, grep, lisp, xml");
 		System.out.println();
 		System.out.println("Learn custom json style written grammar:");
-		System.out.println("  java -jar glade.jar learn-custom-json <path_to_file>");
+		System.out.println("  java -jar glade.jar learn-custom <path_to_file>");
 		System.out.println();
 		System.out.println("Learn program input grammar:");
 		System.out.println("  java -jar glade.jar learn-program <program>");

@@ -46,7 +46,7 @@ public class Extensions {
                     JSONArray arr = (JSONArray) val;
                     expansions = new Object[arr.length()];
                     for (int i = 0; i < arr.length(); i++) {
-                        Object el = arr.getJSONObject(i);
+                        Object el = arr.get(i);
                         if (el instanceof String) {
                             expansions[i] = (String) el;
                         }
