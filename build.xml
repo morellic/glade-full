@@ -17,7 +17,7 @@
 <project default="build">
   <target name="build">
     <mkdir dir="classes"/>
-    <javac srcdir="src" destdir="classes" classpath=".:lib/jalf.jar:lib/automaton.jar" debug="on"/>
+    <javac srcdir="src" destdir="classes" classpath=".:lib/jalf.jar:lib/automaton.jar:lib/json-20190722.jar" debug="on"/>
     <jar destfile="glade.jar" basedir="classes">
       <zipgroupfileset dir="lib" includes="**/*.jar"/>
       <manifest>
