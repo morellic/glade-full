@@ -324,7 +324,7 @@ public class Main {
 	
 	public static void main(String[] args) {
 		Log.init("log.txt");
-		AutomatonUtils.init();
+		// AutomatonUtils.init();
 		
 		if(args.length == 0) {
 			usage();
