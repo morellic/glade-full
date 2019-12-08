@@ -32,6 +32,7 @@ import glade.constants.Settings.SyntheticGrammar;
 import glade.constants.Settings.SyntheticLearner;
 import glade.constants.Settings.SyntheticSettings;
 import glade.constants.program.XmlData;
+import glade.extensions.Extensions.CustomGrammar;
 import glade.grammar.fuzz.GrammarFuzzer.SampleParameters;
 import glade.grammar.fuzz.GrammarTraceFuzzer.MCMCAcceptor;
 import glade.main.XmlFuzzer.FuzzParameters;
@@ -121,6 +122,8 @@ public class Main {
 		LONG_RUNNING,
 		// Synthetic
 		SYNTHETIC,
+		// Custom grammar written as json
+		CUSTOM,
 		// Fuzzing
 		FUZZER,
 		// Statistics
@@ -128,7 +131,7 @@ public class Main {
 		GRAMMAR_SIZE,
 		TRAIN_EXAMPLE_LINES,
 		COVERABLE_LINES;
-		public void run(FuzzSettings fuzz, Fuzzer fuzzer, Fuzzer remove, ProgramSettings program, SyntheticSettings synthetic, SyntheticLearner syntheticLearner, SyntheticGrammar syntheticGrammar, LearnerDataSettings learnerData, CompareSettings compare, Processor processor, LearnerSettings learner, LongRunningSettings longRunning, Callback filterCallback, Random random) {
+		public void run(FuzzSettings fuzz, Fuzzer fuzzer, Fuzzer remove, ProgramSettings program, SyntheticSettings synthetic, SyntheticLearner syntheticLearner, SyntheticGrammar syntheticGrammar, CustomGrammar customGrammar, LearnerDataSettings learnerData, CompareSettings compare, Processor processor, LearnerSettings learner, LongRunningSettings longRunning, Callback filterCallback, Random random) {
 			switch(this) {
 			case LEARN:
 				LearnerDataUtils.learnAllGrammar(learnerData.learnerData, program.name, program.data, program.examples, learner.ignoreErrors, learner.useCharacterClasses);
@@ -164,6 +167,11 @@ public class Main {
 				HybridOracle oracle = RunSynthetic.getTrainSynthetic(syntheticLearner.getOracleLearner(program, learner, fuzz, random),  learnerData.learnerData, syntheticGrammar.getGrammar(), synthetic.boxSize, synthetic.numTrainExamples, synthetic.numTestExamples, fuzz.sample, synthetic.maxLength, filterCallback, random);
 				RunSynthetic.getTestSynthetic(oracle, learnerData.learnerData, syntheticGrammar.getGrammar(), synthetic.boxSize, synthetic.numTrainExamples, synthetic.numTestExamples, fuzz.sample, synthetic.maxLength, filterCallback, random);
 				break;
+			case CUSTOM:
+				Log.info("SIZE: " + ComputeStatistics.getMultiGrammarSize(customGrammar.getGrammar()));
+				HybridOracle oracleCustom = RunSynthetic.getTrainSynthetic(syntheticLearner.getOracleLearner(program, learner, fuzz, random),  learnerData.learnerData, customGrammar.getGrammar(), synthetic.boxSize, synthetic.numTrainExamples, synthetic.numTestExamples, fuzz.sample, synthetic.maxLength, filterCallback, random);
+				RunSynthetic.getTestSynthetic(oracleCustom, learnerData.learnerData, customGrammar.getGrammar(), synthetic.boxSize, synthetic.numTrainExamples, synthetic.numTestExamples, fuzz.sample, synthetic.maxLength, filterCallback, random);
+				break;
 			case BUILD_AFL:
 				LearnerDataUtils.buildAflQueueAll(learnerData.learnerData, program.name, program.data, program.examples, fuzz.numIters + program.examples.getTrainExamples().size());
 				break;
@@ -171,42 +179,54 @@ public class Main {
 				throw new RuntimeException();
 			}
 		}
+
+
 	}
-	
+
+
+
 	public static void runFuzz(Random random, Fuzzer fuzzer, Processor processor, Program program) {
-		RunCommand.FUZZER.run(getDefaultFuzzSettings(random), fuzzer, Fuzzer.TRAIN, program.getSettings(), getDefaultSyntheticSettings(), SyntheticLearner.SYNTHESIS, SyntheticGrammar.XML, getDefaultLearnerDataSettings(), getDefaultCompareSettings(), processor, getDefaultLearnerSettings(), getDefaultLongRunningSettings(), getDefaultCallbackFilter(), random);
+		RunCommand.FUZZER.run(getDefaultFuzzSettings(random), fuzzer, Fuzzer.TRAIN, program.getSettings(), getDefaultSyntheticSettings(), SyntheticLearner.SYNTHESIS, SyntheticGrammar.XML, null, getDefaultLearnerDataSettings(), getDefaultCompareSettings(), processor, getDefaultLearnerSettings(), getDefaultLongRunningSettings(), getDefaultCallbackFilter(), random);
 	}
 	
 	public static void runFuzz(Random random, Fuzzer fuzzer, Processor processor, Program program, int numMutations) {
-		RunCommand.FUZZER.run(getDefaultFuzzSettings(random, numMutations), fuzzer, Fuzzer.TRAIN, program.getSettings(), getDefaultSyntheticSettings(), SyntheticLearner.SYNTHESIS, SyntheticGrammar.XML, getDefaultLearnerDataSettings(), getDefaultCompareSettings(), processor, getDefaultLearnerSettings(), getDefaultLongRunningSettings(), getDefaultCallbackFilter(), random);
+		RunCommand.FUZZER.run(getDefaultFuzzSettings(random, numMutations), fuzzer, Fuzzer.TRAIN, program.getSettings(), getDefaultSyntheticSettings(), SyntheticLearner.SYNTHESIS, SyntheticGrammar.XML, null, getDefaultLearnerDataSettings(), getDefaultCompareSettings(), processor, getDefaultLearnerSettings(), getDefaultLongRunningSettings(), getDefaultCallbackFilter(), random);
 	}
 	
 	public static void runLearn(Program program, Random random) {
-		RunCommand.LEARN.run(getDefaultFuzzSettings(random), Fuzzer.TRAIN, Fuzzer.TRAIN, program.getSettings(), getDefaultSyntheticSettings(), SyntheticLearner.SYNTHESIS, SyntheticGrammar.XML, getDefaultLearnerDataSettings(), getDefaultCompareSettings(), Processor.BOUND_THEN_FILTER, getDefaultLearnerSettings(), getDefaultLongRunningSettings(), getDefaultCallbackFilter(), random);
+		RunCommand.LEARN.run(getDefaultFuzzSettings(random), Fuzzer.TRAIN, Fuzzer.TRAIN, program.getSettings(), getDefaultSyntheticSettings(), SyntheticLearner.SYNTHESIS, SyntheticGrammar.XML, null, getDefaultLearnerDataSettings(), getDefaultCompareSettings(), Processor.BOUND_THEN_FILTER, getDefaultLearnerSettings(), getDefaultLongRunningSettings(), getDefaultCallbackFilter(), random);
 	}
 	
 	public static void runSynthetic(Random random, SyntheticLearner syntheticLearner, SyntheticGrammar syntheticGrammar, int numSamples) {
-		RunCommand.SYNTHETIC.run(getDefaultFuzzSettings(random), Fuzzer.TRAIN, Fuzzer.TRAIN, Program.XML.getSettings(), getDefaultSyntheticSettings(numSamples), syntheticLearner, syntheticGrammar, getDefaultLearnerDataSettings(), getDefaultCompareSettings(), Processor.BOUND_THEN_FILTER, getDefaultLearnerSettings(numSamples), getDefaultLongRunningSettings(), getDefaultCallbackFilter(), random);
+		RunCommand.SYNTHETIC.run(getDefaultFuzzSettings(random), Fuzzer.TRAIN, Fuzzer.TRAIN, Program.XML.getSettings(), getDefaultSyntheticSettings(numSamples), syntheticLearner, syntheticGrammar, null, getDefaultLearnerDataSettings(), getDefaultCompareSettings(), Processor.BOUND_THEN_FILTER, getDefaultLearnerSettings(numSamples), getDefaultLongRunningSettings(), getDefaultCallbackFilter(), random);
 	}
 	
 	public static void runSynthetic(Random random, SyntheticLearner syntheticLearner, SyntheticGrammar syntheticGrammar) {
-		RunCommand.SYNTHETIC.run(getDefaultFuzzSettings(random), Fuzzer.TRAIN, Fuzzer.TRAIN, Program.XML.getSettings(), getDefaultSyntheticSettings(), syntheticLearner, syntheticGrammar, getDefaultLearnerDataSettings(), getDefaultCompareSettings(), Processor.BOUND_THEN_FILTER, getDefaultLearnerSettings(), getDefaultLongRunningSettings(), getDefaultCallbackFilter(), random);
+		RunCommand.SYNTHETIC.run(getDefaultFuzzSettings(random), Fuzzer.TRAIN, Fuzzer.TRAIN, Program.XML.getSettings(), getDefaultSyntheticSettings(), syntheticLearner, syntheticGrammar, null, getDefaultLearnerDataSettings(), getDefaultCompareSettings(), Processor.BOUND_THEN_FILTER, getDefaultLearnerSettings(), getDefaultLongRunningSettings(), getDefaultCallbackFilter(), random);
 	}
-	
+
+	public static void runCustom(Random random, SyntheticLearner syntheticLearner, CustomGrammar customGrammar, int numSamples) {
+		RunCommand.CUSTOM.run(getDefaultFuzzSettings(random), Fuzzer.TRAIN, Fuzzer.TRAIN, Program.XML.getSettings(), getDefaultSyntheticSettings(numSamples), syntheticLearner, SyntheticGrammar.XML, customGrammar, getDefaultLearnerDataSettings(), getDefaultCompareSettings(), Processor.BOUND_THEN_FILTER, getDefaultLearnerSettings(numSamples), getDefaultLongRunningSettings(), getDefaultCallbackFilter(), random);
+	}
+
+	public static void runCustom(Random random, SyntheticLearner syntheticLearner, CustomGrammar customGrammar) {
+		RunCommand.CUSTOM.run(getDefaultFuzzSettings(random), Fuzzer.TRAIN, Fuzzer.TRAIN, Program.XML.getSettings(), getDefaultSyntheticSettings(), syntheticLearner, SyntheticGrammar.XML, customGrammar, getDefaultLearnerDataSettings(), getDefaultCompareSettings(), Processor.BOUND_THEN_FILTER, getDefaultLearnerSettings(), getDefaultLongRunningSettings(), getDefaultCallbackFilter(), random);
+	}
+
 	public static void runBuildAfl(Program program, Random random) {
-		RunCommand.BUILD_AFL.run(getDefaultFuzzSettings(new Random()), Fuzzer.TRAIN, Fuzzer.TRAIN, program.getSettings(), getDefaultSyntheticSettings(), SyntheticLearner.SYNTHESIS, SyntheticGrammar.XML, getDefaultLearnerDataSettings(), getDefaultCompareSettings(), Processor.BOUND_THEN_FILTER, getDefaultLearnerSettings(), getDefaultLongRunningSettings(), getDefaultCallbackFilter(), random);
+		RunCommand.BUILD_AFL.run(getDefaultFuzzSettings(new Random()), Fuzzer.TRAIN, Fuzzer.TRAIN, program.getSettings(), getDefaultSyntheticSettings(), SyntheticLearner.SYNTHESIS, SyntheticGrammar.XML, null, getDefaultLearnerDataSettings(), getDefaultCompareSettings(), Processor.BOUND_THEN_FILTER, getDefaultLearnerSettings(), getDefaultLongRunningSettings(), getDefaultCallbackFilter(), random);
 	}
 	
 	public static void runLearnRpni(Program program, Random random) {
-		RunCommand.LEARN_RPNI.run(getDefaultFuzzSettings(new Random()), Fuzzer.TRAIN, Fuzzer.TRAIN, program.getSettings(), getDefaultSyntheticSettings(), SyntheticLearner.SYNTHESIS, SyntheticGrammar.XML, getDefaultLearnerDataSettings(), getDefaultCompareSettings(), Processor.BOUND_THEN_FILTER, getDefaultLearnerSettings(), getDefaultLongRunningSettings(), getDefaultCallbackFilter(), random);
+		RunCommand.LEARN_RPNI.run(getDefaultFuzzSettings(new Random()), Fuzzer.TRAIN, Fuzzer.TRAIN, program.getSettings(), getDefaultSyntheticSettings(), SyntheticLearner.SYNTHESIS, SyntheticGrammar.XML, null, getDefaultLearnerDataSettings(), getDefaultCompareSettings(), Processor.BOUND_THEN_FILTER, getDefaultLearnerSettings(), getDefaultLongRunningSettings(), getDefaultCallbackFilter(), random);
 	}
 	
 	public static void runLearnLstar(Program program, int numSamples, int maxLength, Random random) {
-		RunCommand.LEARN_LSTAR.run(getDefaultFuzzSettings(new Random()), Fuzzer.TRAIN, Fuzzer.TRAIN, program.getSettings(), getDefaultSyntheticSettings(), SyntheticLearner.SYNTHESIS, SyntheticGrammar.XML, getDefaultLearnerDataSettings(), getDefaultCompareSettings(), Processor.BOUND_THEN_FILTER, getDefaultLearnerSettings(numSamples, maxLength), getDefaultLongRunningSettings(), getDefaultCallbackFilter(), random);
+		RunCommand.LEARN_LSTAR.run(getDefaultFuzzSettings(new Random()), Fuzzer.TRAIN, Fuzzer.TRAIN, program.getSettings(), getDefaultSyntheticSettings(), SyntheticLearner.SYNTHESIS, SyntheticGrammar.XML, null, getDefaultLearnerDataSettings(), getDefaultCompareSettings(), Processor.BOUND_THEN_FILTER, getDefaultLearnerSettings(numSamples, maxLength), getDefaultLongRunningSettings(), getDefaultCallbackFilter(), random);
 	}
 	
 	public static void runLearnLstar(Program program, Random random) {
-		RunCommand.LEARN_LSTAR.run(getDefaultFuzzSettings(new Random()), Fuzzer.TRAIN, Fuzzer.TRAIN, program.getSettings(), getDefaultSyntheticSettings(), SyntheticLearner.SYNTHESIS, SyntheticGrammar.XML, getDefaultLearnerDataSettings(), getDefaultCompareSettings(), Processor.BOUND_THEN_FILTER, getDefaultLearnerSettings(), getDefaultLongRunningSettings(), getDefaultCallbackFilter(), random);
+		RunCommand.LEARN_LSTAR.run(getDefaultFuzzSettings(new Random()), Fuzzer.TRAIN, Fuzzer.TRAIN, program.getSettings(), getDefaultSyntheticSettings(), SyntheticLearner.SYNTHESIS, SyntheticGrammar.XML, null, getDefaultLearnerDataSettings(), getDefaultCompareSettings(), Processor.BOUND_THEN_FILTER, getDefaultLearnerSettings(), getDefaultLongRunningSettings(), getDefaultCallbackFilter(), random);
 	}
 	
 	public static Program[] getAllPrograms() {
@@ -294,9 +314,24 @@ public class Main {
 			runSynthetic(random, grammar, learner, numSamples, timeoutSeconds);
 		}
 	}
-	
+
+	public static void runCustom(Random random, CustomGrammar grammar, SyntheticLearner learner, int numSamples, int timeoutSeconds) {
+		Utils.runForceTimeout(new Runnable() { public void run() { runCustom(random, learner, grammar, numSamples); }}, 1000*timeoutSeconds);
+	}
+
+	public static void runCustom(Random random, CustomGrammar grammar, SyntheticLearner learner, int[] numSamples, int timeoutSeconds) {
+		try {
+			for(int i : numSamples) {
+				runCustom(random, grammar, learner, i, timeoutSeconds);
+			}
+		} catch(Exception e) {
+			Log.info("TIMEOUT");
+		}
+	}
+
+
 	public static void runLongRunning(Random random, Program program, Fuzzer fuzzer) {
-		RunCommand.LONG_RUNNING.run(getLongRunningFuzzSettings(random), fuzzer, Fuzzer.EMPTY, program.getSettings(), getDefaultSyntheticSettings(), SyntheticLearner.SYNTHESIS, SyntheticGrammar.XML, getDefaultLearnerDataSettings(), getDefaultCompareSettings(), Processor.BOUND_THEN_FILTER_ASCII, getDefaultLearnerSettings(), getDefaultLongRunningSettings(), getDefaultCallbackFilter(), random);
+		RunCommand.LONG_RUNNING.run(getLongRunningFuzzSettings(random), fuzzer, Fuzzer.EMPTY, program.getSettings(), getDefaultSyntheticSettings(), SyntheticLearner.SYNTHESIS, SyntheticGrammar.XML, null, getDefaultLearnerDataSettings(), getDefaultCompareSettings(), Processor.BOUND_THEN_FILTER_ASCII, getDefaultLearnerSettings(), getDefaultLongRunningSettings(), getDefaultCallbackFilter(), random);
 	}
 	
 	public static void runMultipleFuzz(Random random, Program program) {
@@ -311,6 +346,9 @@ public class Main {
 		System.out.println("  java -jar glade.jar learn-handwritten <algorithm> <grammar>");
 		System.out.println("  <algorithm> = rpni, lstar, glade-p1, glade");
 		System.out.println("  <grammar> = url, grep, lisp, xml");
+		System.out.println();
+		System.out.println("Learn custom json style written grammar:");
+		System.out.println("  java -jar glade.jar learn-custom-json <path_to_file>");
 		System.out.println();
 		System.out.println("Learn program input grammar:");
 		System.out.println("  java -jar glade.jar learn-program <program>");
@@ -366,12 +404,26 @@ public class Main {
 			
 			runSynthetic(new Random(), grammar, learner, numSamples, timeoutSeconds);
 			PostProcessor.processSynthetic();
-			
+
+		} else if(args[0].equals("learn-custom")) {
+			if(args.length != 2) {
+				usage();
+			}
+			int[] numSamples = new int[]{5, 10, 15, 20, 25, 30, 35, 40, 45, 50};
+			int timeoutSeconds = 300;
+			String filePath = args[1];
+
+			SyntheticLearner learner = SyntheticLearner.SYNTHESIS;
+			CustomGrammar customGrammar = new CustomGrammar(filePath);
+
+			runCustom(new Random(), customGrammar, learner, numSamples, timeoutSeconds);
+			PostProcessor.processSynthetic();
+
 		} else if(args[0].equals("learn-program")) {
 			if(args.length != 2) {
 				usage();
 			}
-			
+
 			Program program = null;
 			if(args[1].equals("sed")) {
 				program = Program.SED;
@@ -388,16 +440,16 @@ public class Main {
 			} else {
 				usage();
 			}
-			
+
 			runLearn(program, new Random());
-			
+
 		} else if(args[0].equals("fuzz-program")) {
 			if(args.length != 2) {
 				usage();
 			}
-			
+
 			Processor processor = Processor.BOUND_THEN_FILTER_ASCII;
-			
+
 			Program program = null;
 			if(args[1].equals("sed")) {
 				program = Program.SED;
@@ -414,11 +466,11 @@ public class Main {
 			} else {
 				usage();
 			}
-			
+
 			runFuzz(new Random(), Fuzzer.NAIVE, processor, program);
 			runFuzz(new Random(), Fuzzer.GRAMMAR, processor, program);
 			PostProcessor.processFuzz();
-			
+
 		} else {
 			usage();
 		}
